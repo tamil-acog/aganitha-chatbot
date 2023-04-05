@@ -8,11 +8,13 @@ app = typer.Typer()
 
 
 @app.command()
-def answer_the_query(folder_id: str, pipeline: str = typer.Argument(None)):
+def answer_the_query(web_input_file: str = typer.Argument(None), video_directory: str = typer.Argument(None),
+                     knowledge_directory: str = typer.Argument(None), folder_id: str = typer.Argument(None),
+                     pipeline: str = typer.Argument(None)):
 
     if pipeline == "yes":
         print("I am going to call Pipeline")
-        pipeline = Pipeline(folder_id)
+        pipeline = Pipeline(web_input_file, video_directory, knowledge_directory, folder_id)
         pipeline()
 
     chain = load_qa_with_sources_chain(OpenAI(temperature=0))

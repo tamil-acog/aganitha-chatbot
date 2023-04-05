@@ -10,7 +10,11 @@ class VideoExtractor:
         self.video_directory = video_directory
         self.audio_directory = None
 
-    def audio_files_generator(self) -> None:
+    def __call__(self):
+        docs = self.audio_files_generator()
+        return docs
+
+    def audio_files_generator(self) -> List[Document]:
         """ Generates audio files from video files in the directory"""
         os.mkdir(self.video_directory, "audio_files")  # Creating a separate directory for audio files
         self.audio_directory = os.path.join(self.video_directory, "audio_files")
@@ -19,6 +23,7 @@ class VideoExtractor:
             clip = mp.VideoFileClip(r"{}".format(video_file))
             audio_file: str = os.path.splitext(video_file)[0]
             clip.audio.write_audiofile(r"audio_files/{}.mp3".format(audio_file))
+        return self.transcript_generator()
 
     def transcript_generator(self) -> List[Document]:
         """Using the whisper model, converting the audio to transcript and writing it
