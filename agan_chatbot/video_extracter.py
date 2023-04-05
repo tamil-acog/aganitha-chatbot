@@ -1,5 +1,6 @@
 import moviepy.editor as mp
 from typing import List
+from langchain.docstore.document import Document
 import whisper
 import os
 
@@ -20,11 +21,12 @@ class VideoExtracter:
             audio_file: str = os.path.splitext(video_file)[0]
             clip.audio.write_audiofile(r"audio_files/{}.mp3".format(audio_file))
 
-    def transcript_generator(self) -> None:
+    def transcript_generator(self) -> List[Document]:
         """Using the whisper model, converting the audio to transcript and writing it
            into a pdf and storing them in the knowledge directory"""
         model: whisper = whisper.load_model("small")
         texts: List[str] = []
+        docs: List[Document] = []
         for file in os.listdir(self.audio_directory):
             transcription = model.transcribe(file)
             segments = transcription['segments']
@@ -32,8 +34,9 @@ class VideoExtracter:
                 text = segment['text']
                 texts.append("".join(text))
             transcript: str = " ".join(texts).strip(" ")
-            with open(os.path.join(self.knowledge_directory, os.path.splitext(file)[0] + ".pdf"), "wb") as f:
-                f.write(transcript)
+            doc: Document = Document(page_content=transcript)
+            docs.append(doc)
+        return docs
 
 
 
