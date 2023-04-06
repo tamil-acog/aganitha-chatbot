@@ -22,7 +22,16 @@ faiss-cpu = "^1.7.3"
 moviepy = "^1.0.3"
 ffmpeg-python = "^0.2.0"
 pytube = "^12.1.3"
+numba = "^0.56.4"
+bs4 = "^0.0.1"
+unstructured = "^0.5.11"
 
+
+[[tool.poetry.source]]
+name = "dev"
+url = "https://dev-pypi.aganitha.ai"
+default = false
+secondary = true
 
 [build-system]
 requires = ["poetry-core"]

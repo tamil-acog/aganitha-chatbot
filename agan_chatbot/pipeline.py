@@ -26,13 +26,21 @@ class Pipeline:
 
     def __call__(self):
         logging.info("Pipeline called")
+        # Calling the website pipeline
         website_docs = website_extractor.WebsiteExtractor.website_loader(self.web_input_file)
-        video_knowledge = video_extractor.VideoExtractor(self.video_directory)
-        video_docs = video_knowledge()
+
+        # Calling the knowledge_directory pipeline
         knowledge_directory_docs = knowlede_directory_extractor.KnowledgeDirectoryExtractor.\
             directory_loader(self.knowledge_directory)
-        gdrive_docs = gdrive_extractor.GdriveExtractor.gdrive_knowledge_extractor(self.folder_id)
-        self.source_docs = website_docs + video_docs + knowledge_directory_docs + gdrive_docs
+
+        # Calling the gdrive pipeline
+        # gdrive_docs = gdrive_extractor.GdriveExtractor.gdrive_knowledge_extractor(self.folder_id)
+
+        # Calling the video_extractor pipeline
+        video_knowledge = video_extractor.VideoExtractor(self.video_directory)
+        video_docs = video_knowledge()
+
+        self.source_docs = website_docs + video_docs + knowledge_directory_docs
         self.create_index(self.source_docs)
         return
 
