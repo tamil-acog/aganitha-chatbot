@@ -1,0 +1,6 @@
+.python-version
+domain_search_index.pickle
+url.txt
+poetry.lock
+search_index.pickle
+agan_chatbot/__pycache__/
