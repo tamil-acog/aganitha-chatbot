@@ -1,6 +1,6 @@
 from agan_chatbot.pipeline import Pipeline
 from langchain.llms import OpenAI
-from langchain.chains.qa_with_sources import load_qa_with_sources_chain
+from langchain.chains import ConversationalRetrievalChain
 import typer
 import pickle
 
@@ -16,22 +16,34 @@ def answer_the_query(web_input_file: str = typer.Argument(None), video_directory
         print("I am going to call Pipeline")
         pipeline = Pipeline(web_input_file, video_directory, knowledge_directory, folder_id)
         pipeline()
-
-    chain = load_qa_with_sources_chain(OpenAI(temperature=0))
+        
 
     with open("search_index.pickle", "rb") as f:
         search_index = pickle.load(f)
+    
+    vectorestore = search_index
 
-    question: str = str(input("Hi, I am Aganitha's Jarvis. How may I help you?\n"))
-    print(
-        chain(
-            {
-                "input_documents": search_index.similarity_search(question, k=3),
-                "question": question,
-            },
-            return_only_outputs=True,
-        )["output_text"]
-    )
+    chain = ConversationalRetrievalChain.from_llm(OpenAI(temperature=0),vectorestore.as_retriever(),return_source_documents=True)
+
+
+    chat_history = []
+
+    for i in range(0,3):
+        question: str = str(input("Hi, I am Aganitha's Jarvis. How may I help you?\n"))
+        result: object = chain({ "question": question,"chat_history": chat_history})   
+        answer: str = result['answer']
+
+        chat_history.append((question,answer))
+        
+        source: str = result['source_documents'] 
+        sources=[]
+        for i in range(0, len(source)):
+            sources.append(source[i].metadata['source'])
+
+        print("\n\n",answer,"\n\nThe source of information are:",sources)
+
+    print("\nThank you for talking to Aganitha's Jarvis.")
+
 
 
 def main():
