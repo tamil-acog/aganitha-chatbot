@@ -38,11 +38,11 @@ class Pipeline:
         knowledge_directory_docs = knowlede_directory_extractor.KnowledgeDirectoryExtractor.\
             directory_loader(self.knowledge_directory)
         
-        # Calling the video_extractor pipeline
+        # Calling the video_extractor pipeline. It depends on the gdrive pipeline
         video_knowledge = video_extractor.VideoExtractor(self.video_directory)
         video_docs = video_knowledge()
 
-        self.source_docs = website_docs + video_docs + knowledge_directory_docs
+        self.source_docs = gdrive_docs + website_docs + video_docs + knowledge_directory_docs
         self.create_index(self.source_docs)
         return
 
@@ -58,6 +58,3 @@ class Pipeline:
         logging.info("search_index created")
         return
 
-if __name__=="__main__":
-    pipeline = Pipeline( folder_id="10Fi-DP40MZQi9olH_fOeTGh-A3JD7KVC",video_directory='/own4lake/sezaz/chatbot/videos')
-    pipeline()

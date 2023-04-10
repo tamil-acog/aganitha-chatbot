@@ -24,7 +24,7 @@ def answer_the_query(web_input_file: str = typer.Argument(None), video_directory
     
     vectorestore = search_index
 
-    chain = ConversationalRetrievalChain.from_llm(OpenAI(temperature=0),vectorestore.as_retriever(),return_source_documents=True)
+    chain = ConversationalRetrievalChain.from_llm(OpenAI(temperature=0), vectorestore.as_retriever(),return_source_documents=True)
 
 
     chat_history = []
