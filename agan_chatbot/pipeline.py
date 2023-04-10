@@ -7,13 +7,13 @@ from typing import List
 import pickle
 import logging
 import warnings
-
+from agan_chatbot.gdriveloader import GDriveLoader
 warnings.filterwarnings("ignore")
 logging.basicConfig(level='INFO')
 
 
 class Pipeline:
-    def __init__(self, web_input_file: str, video_directory: str, knowledge_directory: str, folder_id: str):
+    def __init__(self, web_input_file: str=None, video_directory: str=None, knowledge_directory: str=None, folder_id: str=None):
         self.web_input_file = web_input_file
         self.video_directory = video_directory
         self.knowledge_directory = knowledge_directory
@@ -26,16 +26,18 @@ class Pipeline:
 
     def __call__(self):
         logging.info("Pipeline called")
+
+        # Calling the gdrive pipeline
+        gdrive = GDriveLoader(folder_id=self.folder_id, shared_dir=self.video_directory)
+        gdrive_docs = gdrive.load()
+
         # Calling the website pipeline
         website_docs = website_extractor.WebsiteExtractor.website_loader(self.web_input_file)
 
         # Calling the knowledge_directory pipeline
         knowledge_directory_docs = knowlede_directory_extractor.KnowledgeDirectoryExtractor.\
             directory_loader(self.knowledge_directory)
-
-        # Calling the gdrive pipeline
-        # gdrive_docs = gdrive_extractor.GdriveExtractor.gdrive_knowledge_extractor(self.folder_id)
-
+        
         # Calling the video_extractor pipeline
         video_knowledge = video_extractor.VideoExtractor(self.video_directory)
         video_docs = video_knowledge()
@@ -56,3 +58,6 @@ class Pipeline:
         logging.info("search_index created")
         return
 
+if __name__=="__main__":
+    pipeline = Pipeline( folder_id="10Fi-DP40MZQi9olH_fOeTGh-A3JD7KVC",video_directory='/own4lake/sezaz/chatbot/videos')
+    pipeline()

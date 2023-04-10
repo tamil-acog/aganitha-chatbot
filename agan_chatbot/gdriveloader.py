@@ -21,13 +21,13 @@ from langchain.document_loaders.base import BaseLoader
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 
-class GDriveLoader(BaseLoader, BaseModel):
+class GDriveLoader(BaseLoader):
     """Loader that loads Google Docs from Google Drive."""
+    def __init__(self, folder_id, shared_dir):
+        self.folder_id = folder_id
+        self.shared_dir = shared_dir
 
-    def __init__(self, folder_id: str, shared_dir: str) -> None:
-        self.folder_id: Optional[str] = folder_id
-        self.shared_dir: str = shared_dir
-
+    # folder_id: Optional[str] = None
     service_account_key: Path = Path.home() / ".credentials" / "keys.json"
     credentials_path: Path = Path.home() / ".credentials" / "credentials.json"
     token_path: Path = Path.home() / ".credentials" / "token.json"
@@ -236,7 +236,7 @@ class GDriveLoader(BaseLoader, BaseModel):
             elif item["mimeType"] == "application/pdf":
                 returns.extend(self._load_file_from_id(item["id"]))
             elif item["mimeType"] == "application/vnd.google-apps.folder":
-                GDriveLoader(folder_id=item["id"]).load()
+                GDriveLoader(folder_id=item["id"], shared_dir=self.shared_dir).load()
             else:
                 res = self._unstructured_data_loader(item["id"], item["name"], item["mimeType"])
                 if res:
@@ -299,6 +299,7 @@ class GDriveLoader(BaseLoader, BaseModel):
                 print(docs)
                 return docs
             else:
+                print(self.shared_dir)
                 if not os.path.exists(self.shared_dir):
                     os.makedirs(self.shared_dir, exist_ok=True)
 
@@ -308,7 +309,7 @@ class GDriveLoader(BaseLoader, BaseModel):
                         status, done = downloader.next_chunk()
                         print(F'Download {int(status.progress() * 100)}.')
                     content = fh.getvalue()
-                    with open(self.shared_dir + '/' + name, 'wb+') as f:
+                    with open(self.shared_dir + '/' + id + '**' + name , 'wb+') as f:
                         f.write(content)
                     return
                 else:

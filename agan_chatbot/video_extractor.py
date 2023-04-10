@@ -47,7 +47,8 @@ class VideoExtractor:
                 text = segment['text']
                 texts.append("".join(text))
             transcript: str = " ".join(texts).strip(" ")
-            doc: Document = Document(page_content=transcript, metadata={"source": os.path.join(self.audio_directory, file)})
+            id_file = file.split('**')[0]
+            doc: Document = Document(page_content=transcript, metadata={"source": os.path.join(self.audio_directory, file),'id':id_file})
             docs.append(doc)
         return docs
 
