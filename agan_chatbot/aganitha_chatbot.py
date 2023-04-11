@@ -1,5 +1,4 @@
 from agan_chatbot.pipeline import Pipeline
-from agan_chatbot.constants import INDEX_FILE
 from langchain.llms import OpenAI
 from langchain.chains import ConversationalRetrievalChain
 import typer
@@ -19,7 +18,7 @@ def answer_the_query(web_input_file: str = typer.Argument(None), video_directory
         pipeline()
         
 
-    with open(INDEX_FILE, "rb") as f:
+    with open("search_index.pickle", "rb") as f:
         search_index = pickle.load(f)
     
     vectorestore = search_index

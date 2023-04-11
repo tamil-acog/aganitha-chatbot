@@ -24,10 +24,13 @@ class VideoExtractor:
             os.mkdir(os.path.join(video_parent, "audio_files"))
         self.audio_directory = os.path.join(video_parent, "audio_files")
         for file_name in os.listdir(self.video_directory):
-            if file_name.split('.')[-1] in ["m4a", "flac", "mp3", "wav", "wma", "aac"]:
+            temp = file_name
+            if temp.split('.')[-1] in ["m4a", "flac", "mp3", "wav", "wma", "aac"]:
                 af = self.audio_directory
-                cmd = "mv {} {}".format(file_name, af)
+                print(af)
+                cmd = "mv '{}' {}".format(os.path.join(self.video_directory,file_name), af)
                 os.system(cmd)
+                continue
             video_file: str = os.path.join(self.video_directory, file_name)
             clip = mp.VideoFileClip(r"{}".format(video_file))
             audio_file: str = os.path.splitext(video_file)[0]

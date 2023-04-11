@@ -27,6 +27,7 @@ class Pipeline:
         self.embed_model: str = self.yaml_loader.embed_model
         self.embeddings = None
         self.search_index = None
+        self.vector_db = None
 
     def __call__(self):
         logging.info("Pipeline called")
@@ -51,11 +52,14 @@ class Pipeline:
         return
 
     def create_chunks(self, docs) -> None:
-        logging.info("create_index called")
+        logging.info("chunks are being created")
         for doc in docs:
             for chunk in self.splitter.split_text(doc.page_content):
                 self.source_chunks.append(Document(page_content=chunk, metadata=doc.metadata))
 
+        print(self.embed_model)
+        self._select_embeddings(self.embed_model)
+        print(self.vectordb)
         self._select_index(self.vectordb)
 
     def _select_index(self, vectordb: str) -> Any:
@@ -63,10 +67,11 @@ class Pipeline:
             return self.faiss_index(self.source_chunks)
 
         if vectordb == "MILVUS":
+            print("MILVUS called")
             return self.milvus_index(self.source_chunks)
 
     def _select_embeddings(self, embed_model: str) -> Any:
-        if embed_model == "OpenAI":
+        if embed_model == "OPENAI":
             from langchain.embeddings.openai import OpenAIEmbeddings
             self.embeddings: OpenAIEmbeddings = OpenAIEmbeddings()
 
@@ -74,15 +79,24 @@ class Pipeline:
         #     self.embeddings: BioMed = BioMedEmbedding
 
     def faiss_index(self, docs) -> None:
+        quit()
         from langchain.vectorstores import FAISS
-        self.search_index = FAISS.from_documents(docs, self.embeddings)
+        search_index = FAISS.from_documents(docs, self.embeddings)
         with open("search_index.pickle", "wb") as f:
-            pickle.dump(self.search_index, f)
+            pickle.dump(search_index, f)
         logging.info("FAISS search_index created")
         return
 
     def milvus_index(self, docs) -> None:
-        pass
+        from langchain.vectorstores import Milvus
+        vector_db = Milvus.from_documents(docs,
+                                          self.embeddings,
+                                          connection_args={"alias": "default", 
+                                          "uri": "https://in01-84cae738bde3a79.aws-us-west-2.vectordb.zillizcloud.com:19541",
+                                          "secure": True, "user": "db_admin", "password": "guNagaNa1"},
+                                          )
+        logging.info("MILVUS index created")
+    
 
 
 
