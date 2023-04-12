@@ -14,3 +14,7 @@ def run_pipeline(web_input_file: str = typer.Argument(None), video_directory: st
 def main():
     app()
 
+
+if __name__ == "__main__":
+    app()
+

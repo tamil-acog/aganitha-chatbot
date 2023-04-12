@@ -13,16 +13,22 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from googleapiclient.errors import HttpError
 
-from pydantic import root_validator, validator
+from pydantic import BaseModel, root_validator, validator
 
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class GDriveLoader(BaseLoader):
     """Loader that loads Google Docs from Google Drive."""
+
     def __init__(self, folder_id, shared_dir):
         self.folder_id = folder_id
         self.shared_dir = shared_dir
@@ -33,7 +39,6 @@ class GDriveLoader(BaseLoader):
     token_path: Path = Path.home() / ".credentials" / "token.json"
     document_ids: Optional[List[str]] = None
     file_ids: Optional[List[str]] = None
-
 
     @root_validator
     def validate_folder_id_or_document_ids(
@@ -129,8 +134,6 @@ class GDriveLoader(BaseLoader):
                         f"https://docs.google.com/spreadsheets/d/{id}/"
                         f"edit?gid={sheet['properties']['sheetId']}"
                     ),
-                    "title": f"{spreadsheet['properties']['title']} - {sheet_name}",
-                    "row": i,
                     "id": id
                 }
                 content = []
@@ -166,7 +169,7 @@ class GDriveLoader(BaseLoader):
                         slide_text.append(text)
             page_content = "\n".join(slide_text)
             metadata = {
-                'slide_num': num,
+                "source": f"https://docs.google.com/document/d/{id}/edit",
                 'id': id
             }
             documents.append(Document(page_content=page_content, metadata=metadata))
@@ -183,7 +186,7 @@ class GDriveLoader(BaseLoader):
         creds = self._load_credentials()
         service = build("drive", "v3", credentials=creds)
 
-        file = service.files().get(fileId=id,fields='name,permissions').execute()
+        file = service.files().get(fileId=id, fields='name,permissions').execute()
         request = service.files().export_media(fileId=id, mimeType="text/plain")
         fh = BytesIO()
         downloader = MediaIoBaseDownload(fh, request)
@@ -194,15 +197,13 @@ class GDriveLoader(BaseLoader):
 
         except HttpError as e:
             if e.resp.status == 404:
-                print("File not found: {}".format(id))
+                logger.error("File not found: {}".format(id))
             else:
-                print("An error occurred: {}".format(e))
+                logger.error("An error occurred: {}".format(e))
         text = fh.getvalue().decode("utf-8")
-        print('file',file)
+        logger.info('file', file)
         metadata = {
-            'permissions': f"{file.get('permissions')}",
             "source": f"https://docs.google.com/document/d/{id}/edit",
-            "title": f"{file.get('name')}",
             "id": id
         }
         return Document(page_content=text, metadata=metadata)
@@ -226,7 +227,7 @@ class GDriveLoader(BaseLoader):
         items = results.get("files", [])
         returns = []
         for item in items:
-            print('item\n', item)
+            logger.info('item\n', item)
             if item["mimeType"] == "application/vnd.google-apps.document":
                 returns.append(self._load_document_from_id(item["id"]))
             elif item["mimeType"] == "application/vnd.google-apps.spreadsheet":
@@ -237,13 +238,66 @@ class GDriveLoader(BaseLoader):
                 returns.extend(self._load_file_from_id(item["id"]))
             elif item["mimeType"] == "application/vnd.google-apps.folder":
                 GDriveLoader(folder_id=item["id"], shared_dir=self.shared_dir).load()
+            # elif item["mimeType"] == "text/plain":
+            #     continue
             else:
                 res = self._unstructured_data_loader(item["id"], item["name"], item["mimeType"])
                 if res:
                     returns.extend(res)
-        print(returns)
+        logger.info(returns)
         return returns
 
+
+    def _load_documents_from_ids(self) -> List[Document]:
+        """Load documents from a list of IDs."""
+        if not self.document_ids:
+            raise ValueError("document_ids must be set")
+
+        return [self._load_document_from_id(doc_id) for doc_id in self.document_ids]
+
+    def _load_file_from_id(self, id: str) -> List[Document]:
+        """Load a file from an ID."""
+        from io import BytesIO
+
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaIoBaseDownload
+
+        creds = self._load_credentials()
+        service = build("drive", "v3", credentials=creds)
+
+        file = service.files().get(fileId=id).execute()
+        request = service.files().get_media(fileId=id)
+        fh = BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+        content = fh.getvalue()
+
+        from PyPDF2 import PdfReader
+
+        pdf_reader = PdfReader(BytesIO(content))
+
+        return [
+            Document(
+                page_content=page.extract_text(),
+                metadata={
+                    "source": f"https://drive.google.com/file/d/{id}/view",
+                    "id": id
+                },
+            )
+            for i, page in enumerate(pdf_reader.pages)
+        ]
+
+    def _load_file_from_ids(self) -> List[Document]:
+        """Load files from a list of IDs."""
+        if not self.file_ids:
+            raise ValueError("file_ids must be set")
+        docs = []
+        for file_id in self.file_ids:
+            docs.extend(self._load_file_from_id(file_id))
+        return docs
+    
     def _unstructured_data_loader(self, id, name, type):
 
         """Load a file from an ID.
@@ -284,22 +338,35 @@ class GDriveLoader(BaseLoader):
             downloader = MediaIoBaseDownload(fh, request)
 
             # data = BytesIO(content)
-            print(type)
+            logger.info(type)
             if type != 'video/mp4':
-                done = False
-                while done is False:
-                    status, done = downloader.next_chunk()
-                    print(F'Download {int(status.progress() * 100)}.')
-                content = fh.getvalue()
-                with open(name, 'wb+') as f:
-                    f.write(content)
-                print(name)
-                loader = UnstructuredFileLoader(name)
-                docs = loader.load()
-                print(docs)
-                return docs
+                try:
+                    done = False
+                    while done is False:
+                        status, done = downloader.next_chunk()
+                        logger.info(F'Download {int(status.progress() * 100)}.')
+                    content = fh.getvalue()
+
+                    unstructured_dir = os.path.join(os.path.dirname(self.shared_dir), 'unstructured_files')
+                    if not os.path.exists(unstructured_dir):
+                        os.makedirs(unstructured_dir, exist_ok=True)
+                    with open(unstructured_dir + '/' + name, 'wb+') as f:
+                        f.write(content)
+                    # print(unstructured_dir+'/'+name)
+                    loader = UnstructuredFileLoader(unstructured_dir + '/' + name, content_type=type, mode="elements")
+                    docs = loader.load()
+
+                    for doc in docs:
+                        doc.metadata.clear()
+                        doc.metadata['source'] = unstructured_dir + '/' + name
+                        doc.metadata['id'] = id
+                    logger.info(docs)
+                    return docs
+                except Exception as e:
+                    logger.error(f'error occurred while converting {name} of mime type {type} to document object')
+                    logger.error(F' error details: {e}')
             else:
-                print(self.shared_dir)
+                logger.info(self.shared_dir)
                 if not os.path.exists(self.shared_dir):
                     os.makedirs(self.shared_dir, exist_ok=True)
 
@@ -307,68 +374,16 @@ class GDriveLoader(BaseLoader):
                     done = False
                     while done is False:
                         status, done = downloader.next_chunk()
-                        print(F'Download {int(status.progress() * 100)}.')
+                        logger.info(F'Download {int(status.progress() * 100)}.')
                     content = fh.getvalue()
-                    with open(self.shared_dir + '/' + id + '**' + name , 'wb+') as f:
+                    with open(self.shared_dir + '/' + id + '**' + name, 'wb+') as f:
                         f.write(content)
                     return
                 else:
-                    print(f'file {name}  in {self.shared_dir} directory already exists skipping')
+                    logger.warning(f'file {name}  in {self.shared_dir} directory already exists skipping')
         except HttpError as error:
-            print(F'An error occurred: {error}')
+            logger.error(F'An error occurred: {error}')
             file = None
-
-    def _load_documents_from_ids(self) -> List[Document]:
-        """Load documents from a list of IDs."""
-        if not self.document_ids:
-            raise ValueError("document_ids must be set")
-
-        return [self._load_document_from_id(doc_id) for doc_id in self.document_ids]
-
-    def _load_file_from_id(self, id: str) -> List[Document]:
-        """Load a file from an ID."""
-        from io import BytesIO
-
-        from googleapiclient.discovery import build
-        from googleapiclient.http import MediaIoBaseDownload
-
-        creds = self._load_credentials()
-        service = build("drive", "v3", credentials=creds)
-
-        file = service.files().get(fileId=id).execute()
-        request = service.files().get_media(fileId=id)
-        fh = BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while done is False:
-            status, done = downloader.next_chunk()
-        content = fh.getvalue()
-
-        from PyPDF2 import PdfReader
-
-        pdf_reader = PdfReader(BytesIO(content))
-
-        return [
-            Document(
-                page_content=page.extract_text(),
-                metadata={
-                    "source": f"https://drive.google.com/file/d/{id}/view",
-                    "title": f"{file.get('name')}",
-                    "page": i,
-                    "id": id
-                },
-            )
-            for i, page in enumerate(pdf_reader.pages)
-        ]
-
-    def _load_file_from_ids(self) -> List[Document]:
-        """Load files from a list of IDs."""
-        if not self.file_ids:
-            raise ValueError("file_ids must be set")
-        docs = []
-        for file_id in self.file_ids:
-            docs.extend(self._load_file_from_id(file_id))
-        return docs
 
     def load(self) -> List[Document]:
         """Load documents."""
@@ -378,3 +393,5 @@ class GDriveLoader(BaseLoader):
             return self._load_documents_from_ids()
         else:
             return self._load_file_from_ids()
+    
+    
