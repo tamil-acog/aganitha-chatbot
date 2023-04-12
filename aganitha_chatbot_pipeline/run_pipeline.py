@@ -1,4 +1,4 @@
-from agan_chatbot.pipeline import Pipeline
+from aganitha_chatbot_pipeline.pipeline import Pipeline
 import typer
 
 app = typer.Typer()

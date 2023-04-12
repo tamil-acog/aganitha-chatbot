@@ -1,12 +1,13 @@
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.docstore.document import Document
-from agan_chatbot import video_extractor, website_extractor, knowlede_directory_extractor
-from agan_chatbot.yaml_parser import YamlParser
+from aganitha_chatbot_pipeline import video_extractor, website_extractor, knowlede_directory_extractor
+from aganitha_chatbot_pipeline.yaml_parser import YamlParser
+from aganitha_chatbot_pipeline.gdrive_extractor import GDriveLoader
 from typing import List, Any
 import pickle
 import logging
 import warnings
-from agan_chatbot.gdrive_extractor import GDriveLoader
+
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(level='INFO')
