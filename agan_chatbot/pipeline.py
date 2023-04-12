@@ -33,19 +33,23 @@ class Pipeline:
         logging.info("Pipeline called")
 
         # Calling the gdrive pipeline
-        gdrive = GDriveLoader(folder_id=self.folder_id, shared_dir=self.video_directory)
-        gdrive_docs = gdrive.load()
+        if self.folder_id is not None:
+            gdrive = GDriveLoader(folder_id=self.folder_id, shared_dir=self.video_directory)
+            gdrive_docs = gdrive.load()
 
         # Calling the website pipeline
-        website_docs = website_extractor.WebsiteExtractor.website_loader(self.web_input_file)
+        if self.web_input_file is not None:
+            website_docs = website_extractor.WebsiteExtractor.website_loader(self.web_input_file)
 
         # Calling the knowledge_directory pipeline
-        knowledge_directory_docs = knowlede_directory_extractor.KnowledgeDirectoryExtractor.\
-            directory_loader(self.knowledge_directory)
+        if self.knowledge_directory is not None:
+            knowledge_directory_docs = knowlede_directory_extractor.KnowledgeDirectoryExtractor.\
+                directory_loader(self.knowledge_directory)
         
         # Calling the video_extractor pipeline. It depends on the gdrive pipeline
-        video_knowledge = video_extractor.VideoExtractor(self.video_directory)
-        video_docs = video_knowledge()
+        if self.video_directory is not None:
+            video_knowledge = video_extractor.VideoExtractor(self.video_directory)
+            video_docs = video_knowledge()
 
         self.source_docs = gdrive_docs + website_docs + video_docs + knowledge_directory_docs
         self.create_chunks(self.source_docs)
