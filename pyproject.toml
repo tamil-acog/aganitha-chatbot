@@ -1,14 +1,13 @@
 [tool.poetry]
-name = "agan-chatbot"
+name = "aganitha-chatbot-pipeline"
 version = "0.1.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-packages = [{include = "agan_chatbot"}]
+packages = [{include = "aganitha_chatbot_pipeline"}]
 
 [tool.poetry.scripts]
-aganitha-chatbot = "agan_chatbot.aganitha_chatbot:main"
-aganitha-chatbot-pipeline = "agan_chatbot.run_pipeline:main"
+aganitha-chatbot-pipeline = "aganitha_chatbot_pipeline.run_pipeline:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
